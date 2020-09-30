@@ -2,14 +2,15 @@
 require './src/game_controller'
 require './src/board'
 require 'json'
+require 'ap'
 
 describe Board do
 
   describe '#initialize' do
-    it 'returns a board of specifiec size' do
+    it 'returns a board of specified size' do
       b = Board.new 10, 10
-      expect(b.rows).to eq(10)
-      expect(b.cols).to eq(10)
+      expect(b.max_tile.row).to eq(10)
+      expect(b.max_tile.col).to eq(10)
     end
     it 'has a list of mines' do
       b = Board.new 10, 10
@@ -23,18 +24,91 @@ describe Board do
   describe '#populate' do
     it 'builds the given number of mines' do
       b = Board.new 10, 10
-      new_mine_list = Board.populate 5, b.rows, b.cols, b.mines
+      new_mine_list = Board.populate 5, b.max_tile, b.mines
       expect(new_mine_list.length).to eq(5)
       expect(new_mine_list.uniq.length).to eq(new_mine_list.length)
     end
   end
+
   describe '#reveal' do
     it 'adds a user reveal to the state' do
       b = Board.new(1, 1)
-      new_reveals = Board.reveal Tile.new(0, 0), b.reveals
+      safe_tile = Tile.new(0, 0)
+      new_reveals = Board.reveal(safe_tile, b.max_tile, b.mines)
       expect(new_reveals).to include(Tile.new(0, 0))
     end
+    it 'adds safe, adjacent tiles to the state' do
+      b = Board.new(3, 3)
+      safe_tile = Tile.new(0, 0)
+      new_reveals = Board.reveal(safe_tile, b.max_tile, b.mines)
+      pp new_reveals
+      expect(new_reveals.length).to eq(9)
+    end
   end
+
+  describe '#line' do
+    context 'vertical' do
+      it 'returns the column of tiles as an array' do
+        start = Tile.new(0, 3)
+        new_line = Board.line(start, 10, Direction::Vertical)
+        expect(new_line.length).to eq(10)
+        expect(new_line.map { |t| t[:col] }.uniq.first).to eq(start[:col])
+      end
+      it 'returns the row of tiles as an array' do
+        start = Tile.new(3, 0)
+        new_line = Board.line(start, 10, Direction::Horizonal)
+        expect(new_line.length).to eq(10)
+        expect(new_line.map { |t| t[:row] }.uniq.first).to eq(start[:row])
+      end
+    end
+  end
+
+  describe 'square' do
+    it 'returns a set of tiles making the outline of a square' do
+      top_side = Board.line(Tile.new(0, 0), 10, Direction::Horizonal)
+      bottom_side = Board.line(Tile.new(9, 0), 10, Direction::Horizonal)
+      left_side = Board.line(Tile.new(0, 0), 10, Direction::Vertical)
+      right_side = Board.line(Tile.new(0, 9), 10, Direction::Vertical)
+
+      expected_square = (top_side + bottom_side + left_side + right_side).uniq
+      generated_square = Board.square(Tile.new(0, 0), 10)
+      expect(expected_square.map { |m| generated_square.include?(m) }.uniq.first).to eq(true)
+    end
+  end
+
+  describe '#is_safe?' do
+    it 'returns true if no adjacent tiles has a mine' do
+      b = Board.new 10, 10
+      safe_tile = Tile.new(2, 2)
+      is_safe = Board.is_safe? safe_tile, b.max_tile, b.mines
+      expect(is_safe).to eq(true)
+
+      unsafe_tile = safe_tile
+      b.mines.push(Tile.new(2, 3))
+
+      should_be_unsafe = Board.is_safe? unsafe_tile, b.max_tile, b.mines
+      expect(should_be_unsafe).to eq(false)
+    end
+  end
+
+  describe '#adjacent_tiles' do
+    it 'does not return tiles outside the board' do
+      b = Board.new 10, 10
+      tile = Tile.new(0, 0)
+      tiles = Board.adjacent_tiles(tile, b.max_tile)
+      expect(tiles.collect { |t| t.col }.any? { |x| x < 0 }).to eq(false)
+      expect(tiles.collect { |t| t.row }.any? { |x| x < 0 }).to eq(false)
+    end
+
+    it 'returns all eight adjacent tiles' do
+      b = Board.new 10, 10
+      tile = Tile.new(3, 3)
+      adjacent_tiles = Board.adjacent_tiles(tile, b.max_tile)
+      above = Tile.new(2, 3)
+      expect(adjacent_tiles).to include(above)
+    end
+  end
+
 
   describe '#is_mine?' do
     it 'tells if a reveal is a mine or not' do
@@ -100,7 +174,7 @@ describe GameController do
       it 'sets the game status to won if all tiles are cleared' do
         new_game = GameController.new(1, 2, 0)
         new_game.sweep Tile.new(0, 0)
-        new_game.sweep(Tile.new(0,1))
+        new_game.sweep(Tile.new(0, 1))
         expect(new_game.status).to eq(GameState::Won)
       end
     end
