@@ -43,30 +43,37 @@ class Board
 
   sig { params(to_reveal: Tile, max_tile: Tile, mines: Array).returns(Set) }
   def self.reveal(to_reveal, max_tile, mines)
-    sig{ params(prior: Set, distance: Integer).returns(Set)}
     puts "max tile is #{max_tile[:row]}, #{max_tile[:col]}"
+
     get_contig = lambda do |prior, distance|
       return Set.new if prior.length == 0
-      if to_reveal[:row] + distance > max_tile[:row] && to_reveal[:col] + distance > max_tile[:col]
+      if to_reveal[:row] + distance == max_tile[:row] && to_reveal[:col] + distance == max_tile[:col]
+        puts "distance is #{distance}. aborting"
         return Set.new
       end
       top_left = Tile.new(to_reveal[:row] + distance, to_reveal[:col] - distance)
       square = Board.square(top_left, (2 * distance) + 1)
-      safe_and_contiguous = square.reject{|t| mines.include?(t) || t[:row] < 0 || t[:col] < 0 } # || (Board.adjacent_tiles(t,max_tile) & prior).empty? }
+      safe_and_contiguous = square.reject{|t| mines.include?(t) || !self.tile_is_on_board(t, max_tile) } # || (Board.adjacent_tiles(t,max_tile) & prior).empty? }
       return safe_and_contiguous.to_set + get_contig.call(safe_and_contiguous, distance + 1)
     end
 
-    reveals = get_contig.call([to_reveal], 1)
+    reveals = get_contig.call([to_reveal], 0)
     return reveals.to_set.add(to_reveal)
   end
 
   sig { params(top_left: Tile, size: Integer).returns(Set) }
   def self.square(top_left, size)
+    puts "making square for #{top_left.inspect} and #{size}"
+    puts '#########################################################################'
     top_side = Board.line(top_left, size, Direction::Horizonal)
+    pp top_side
     bottom_left = Tile.new(top_left['row'] + size - 1, top_left['col'])
     bottom_side = Board.line(bottom_left, size, Direction::Horizonal)
+    pp bottom_side
     left_side = Board.line(top_left, size, Direction::Vertical)
+    pp left_side
     right_side = Board.line(top_side.last, size, Direction::Vertical)
+    pp right_side
     (top_side + bottom_side + left_side + right_side).to_set
   end
 
@@ -88,6 +95,11 @@ class Board
       line.push(t)
     end
     return line
+  end
+
+  sig { params(tile: Tile, max_tile: Tile).returns(T::Boolean) }
+  def self.tile_is_on_board(tile, max_tile)
+    tile.row < max_tile.row && tile.col < max_tile.col && tile.row >= 0 && tile.col >= 00
   end
 
   sig { params(tile: Tile, mines: Array).returns(T::Boolean) }

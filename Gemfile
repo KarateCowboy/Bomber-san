@@ -8,4 +8,4 @@ gem 'sorbet'
 gem 'rspec'
 gem 'sorbet-runtime'
 gem 'awesome_print'
-# gem "rails"
+gem '  gem 'rails-hyperstack', '~> 1.0.alpha1.0'

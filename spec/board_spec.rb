@@ -39,6 +39,8 @@ describe Board do
     end
     it 'adds safe, adjacent tiles to the state' do
       b = Board.new(3, 3)
+      let rows = []
+      3.times{|r| rows.push([]); 3.times{|c| rows[r].push('x') }}
       safe_tile = Tile.new(0, 0)
       new_reveals = Board.reveal(safe_tile, b.max_tile, b.mines)
       pp new_reveals
